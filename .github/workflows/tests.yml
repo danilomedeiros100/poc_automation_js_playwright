@@ -1,10 +1,31 @@
-name: QA Automation Tests
+name: Testes de automação QA
+
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Manual — {0}', github.event.inputs.tipo_suite) || format('CI — {0}', github.ref_name) }}
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      tipo_suite:
+        description: 'Conjunto de testes a executar (tags Playwright / BDD)'
+        type: choice
+        required: true
+        default: completo
+        options:
+          - completo
+          - sanity
+          - critical
+          - regression
+          - ui
+          - api
+      com_relatorios:
+        description: 'Gerar Allure + Playwright e enviar como artifacts (não publica no Pages)'
+        type: boolean
+        required: false
+        default: true
   # Quando quiser agendar (ex.: 3x/dia UTC), descomente e ajuste o job `regression` (if) em baixo.
   # schedule:
   #   - cron: '0 8 * * *'
@@ -26,42 +47,42 @@ env:
   ALLURE_HISTORY_SOURCE: gh-pages-prev/allure/history
 
 jobs:
-  # ─── PR / Push: sanity gate + suite completa para o report ────────────────
+  # ─── PR / Push: gate sanity + suite completa + relatórios ───────────────────
   sanity:
-    name: "PR Gate · Sanity Tests"
+    name: 'PR / push — Gate @sanity e relatórios'
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Instalar dependências (npm ci)
         run: npm ci
 
-      - name: Cache Playwright browsers
+      - name: Cache dos browsers Playwright
         id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Playwright browsers
+      - name: Instalar browsers Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Install Playwright system deps (cache hit)
+      - name: Dependências de sistema Playwright (cache hit)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      # Gate: falha o job se @sanity quebrar
-      - name: Sanity Gate
+      - name: Gate — suite @sanity (falha bloqueia o job)
         run: npm run test:sanity
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -69,9 +90,7 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      # Report completo: roda tudo (inclui falha intencional @regression)
-      # continue-on-error mantém o pipeline verde para falhas conhecidas
-      - name: Full suite for complete report
+      - name: Suite completa (relatório; falhas conhecidas não bloqueiam)
         if: always()
         run: npm test
         continue-on-error: true
@@ -89,11 +108,11 @@ jobs:
           ref: gh-pages
           path: gh-pages-prev
 
-      - name: Generate Allure Report
+      - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
 
-      - name: Build combined Pages folder
+      - name: Montar pasta combinada para GitHub Pages
         if: always()
         run: |
           mkdir -p reports/pages/playwright reports/pages/allure
@@ -101,13 +120,13 @@ jobs:
           cp -r reports/allure-report/. reports/pages/allure/
           cp .github/pages-index.html reports/pages/index.html
 
-      - name: Upload Pages artifact
+      - name: Enviar artifact GitHub Pages
         uses: actions/upload-pages-artifact@v3
         if: always()
         with:
           path: reports/pages/
 
-      - name: Upload Playwright report
+      - name: Artifact — relatório Playwright
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -115,7 +134,7 @@ jobs:
           path: reports/playwright-report/
           retention-days: 7
 
-      - name: Upload Allure results
+      - name: Artifact — resultados Allure (raw)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -123,42 +142,43 @@ jobs:
           path: reports/allure-results/
           retention-days: 7
 
-  # ─── Merge: caminhos críticos após sanity passar ──────────────────────────
+  # ─── Push em main: testes @critical após o gate ────────────────────────────
   critical:
-    name: "Merge Gate · Critical Tests"
+    name: 'Merge em main — testes @critical'
     runs-on: ubuntu-latest
     needs: sanity
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Instalar dependências (npm ci)
         run: npm ci
 
-      - name: Cache Playwright browsers
+      - name: Cache dos browsers Playwright
         id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Playwright browsers
+      - name: Instalar browsers Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Install Playwright system deps (cache hit)
+      - name: Dependências de sistema Playwright (cache hit)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Run Critical tests
+      - name: Executar testes @critical
         run: npm run test:critical
         env:
           BASE_URL: ${{ secrets.BASE_URL }}
@@ -174,11 +194,11 @@ jobs:
           ref: gh-pages
           path: gh-pages-prev
 
-      - name: Generate Allure Report
+      - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
 
-      - name: Upload Playwright report
+      - name: Artifact — relatório Playwright
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -186,7 +206,7 @@ jobs:
           path: reports/playwright-report/
           retention-days: 14
 
-      - name: Upload Allure results
+      - name: Artifact — resultados Allure (raw)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -194,9 +214,99 @@ jobs:
           path: reports/allure-results/
           retention-days: 14
 
+  # ─── Execução manual: escolha de suite (workflow_dispatch) ─────────────────
+  execucao_manual:
+    name: 'Manual — ${{ github.event.inputs.tipo_suite }}'
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências (npm ci)
+        run: npm ci
+
+      - name: Cache dos browsers Playwright
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Instalar browsers Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Dependências de sistema Playwright (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Executar testes (conforme escolha no formulário)
+        run: |
+          set -euo pipefail
+          T="${{ github.event.inputs.tipo_suite }}"
+          case "$T" in
+            completo)     npm test ;;
+            sanity)       npm run test:sanity ;;
+            critical)     npm run test:critical ;;
+            regression)   npm run test:regression ;;
+            ui)           npm run test:ui ;;
+            api)          npm run test:api ;;
+            *)            echo "Opção inválida: $T"; exit 1 ;;
+          esac
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          API_URL: ${{ secrets.API_URL }}
+          UI_USER: ${{ secrets.UI_USER }}
+          UI_PASS: ${{ secrets.UI_PASS }}
+
+      - name: Checkout GitHub Pages (histórico Allure anterior)
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-prev
+
+      - name: Gerar relatório Allure
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        run: npm run report:allure:generate
+
+      - name: Artifact — relatório Playwright
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-manual-${{ github.event.inputs.tipo_suite }}
+          path: reports/playwright-report/
+          retention-days: 14
+
+      - name: Artifact — relatório Allure (HTML)
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-manual-${{ github.event.inputs.tipo_suite }}
+          path: reports/allure-report/
+          retention-days: 14
+
+      - name: Artifact — resultados Allure (raw)
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-manual-${{ github.event.inputs.tipo_suite }}
+          path: reports/allure-results/
+          retention-days: 14
+
   # ─── Deploy: publica relatórios no GitHub Pages ───────────────────────────
   deploy-report:
-    name: "Deploy · GitHub Pages"
+    name: 'Publicar relatórios no GitHub Pages'
     # Com `schedule` + regression ativos, pode passar a depender também de `regression` e usar `if: always()` + ramo schedule.
     needs: [sanity, critical]
     runs-on: ubuntu-latest
@@ -207,45 +317,46 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy para GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
 
   # ─── Regressão agendada + Pages (desativado até existir `on.schedule` acima) ─
   regression:
-    name: "Agendado · Regression + Pages"
+    name: 'Agendado — regressão + Pages (inativo)'
     runs-on: ubuntu-latest
     if: false
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+      - name: Instalar dependências (npm ci)
         run: npm ci
 
-      - name: Cache Playwright browsers
+      - name: Cache dos browsers Playwright
         id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-all-${{ hashFiles('package-lock.json') }}
 
-      - name: Install Playwright browsers
+      - name: Instalar browsers Playwright
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
 
-      - name: Install Playwright system deps (cache hit)
+      - name: Dependências de sistema Playwright (cache hit)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps
 
-      - name: Run all tests
+      - name: Executar todos os testes
         run: npm test
         continue-on-error: true
         env:
@@ -262,11 +373,11 @@ jobs:
           ref: gh-pages
           path: gh-pages-prev
 
-      - name: Generate Allure Report
+      - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
 
-      - name: Build combined Pages folder
+      - name: Montar pasta combinada para GitHub Pages
         if: always()
         run: |
           mkdir -p reports/pages/playwright reports/pages/allure
@@ -274,13 +385,13 @@ jobs:
           cp -r reports/allure-report/. reports/pages/allure/
           cp .github/pages-index.html reports/pages/index.html
 
-      - name: Upload Pages artifact
+      - name: Enviar artifact GitHub Pages
         uses: actions/upload-pages-artifact@v3
         if: always()
         with:
           path: reports/pages/
 
-      - name: Upload Playwright report
+      - name: Artifact — relatório Playwright
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -288,7 +399,7 @@ jobs:
           path: reports/playwright-report/
           retention-days: 30
 
-      - name: Upload Allure report
+      - name: Artifact — relatório Allure (HTML)
         uses: actions/upload-artifact@v4
         if: always()
         with:
