@@ -5,8 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  schedule:
-    - cron: '0 2 * * *'
+  # Quando quiser agendar (ex.: 3x/dia UTC), descomente e ajuste o job `regression` (if) em baixo.
+  # schedule:
+  #   - cron: '0 8 * * *'
+  #   - cron: '0 14 * * *'
+  #   - cron: '0 20 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,6 +22,8 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Relativo à raiz do checkout; preenchido após checkout do gh-pages nos jobs que geram Allure
+  ALLURE_HISTORY_SOURCE: gh-pages-prev/allure/history
 
 jobs:
   # ─── PR / Push: sanity gate + suite completa para o report ────────────────
@@ -75,6 +80,14 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
+
+      - name: Checkout GitHub Pages (histórico Allure anterior)
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-prev
 
       - name: Generate Allure Report
         if: always()
@@ -153,6 +166,14 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
+      - name: Checkout GitHub Pages (histórico Allure anterior)
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-prev
+
       - name: Generate Allure Report
         if: always()
         run: npm run report:allure:generate
@@ -176,7 +197,7 @@ jobs:
   # ─── Deploy: publica relatórios no GitHub Pages ───────────────────────────
   deploy-report:
     name: "Deploy · GitHub Pages"
-    # O artifact do Pages é produzido em `sanity`; o deploy precisa depender desse job.
+    # Com `schedule` + regression ativos, pode passar a depender também de `regression` e usar `if: always()` + ramo schedule.
     needs: [sanity, critical]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -190,11 +211,11 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v4
 
-  # ─── Nightly: suite completa de regressão ─────────────────────────────────
+  # ─── Regressão agendada + Pages (desativado até existir `on.schedule` acima) ─
   regression:
-    name: "Nightly · Regression Tests"
+    name: "Agendado · Regression + Pages"
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    if: false
     timeout-minutes: 30
 
     steps:
@@ -233,9 +254,31 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
+      - name: Checkout GitHub Pages (histórico Allure anterior)
+        if: always()
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-prev
+
       - name: Generate Allure Report
         if: always()
         run: npm run report:allure:generate
+
+      - name: Build combined Pages folder
+        if: always()
+        run: |
+          mkdir -p reports/pages/playwright reports/pages/allure
+          cp -r reports/playwright-report/. reports/pages/playwright/
+          cp -r reports/allure-report/. reports/pages/allure/
+          cp .github/pages-index.html reports/pages/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: reports/pages/
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
