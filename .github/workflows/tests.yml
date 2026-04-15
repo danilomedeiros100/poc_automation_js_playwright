@@ -22,8 +22,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ─── PR: gate rápido antes do merge ───────────────────────────────────────
   sanity:
-    name: Sanity Tests
+    name: "PR Gate · Sanity Tests"
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     timeout-minutes: 15
@@ -97,9 +98,73 @@ jobs:
           path: reports/allure-results/
           retention-days: 7
 
-  deploy-report:
-    name: Deploy Reports to GitHub Pages
+  # ─── Merge: caminhos críticos após sanity passar ──────────────────────────
+  critical:
+    name: "Merge Gate · Critical Tests"
+    runs-on: ubuntu-latest
     needs: sanity
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Critical tests
+        run: npm run test:critical
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          API_URL: ${{ secrets.API_URL }}
+          UI_USER: ${{ secrets.UI_USER }}
+          UI_PASS: ${{ secrets.UI_PASS }}
+
+      - name: Generate Allure Report
+        if: always()
+        run: npm run report:allure:generate
+
+      - name: Upload Playwright report (artifact)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-critical
+          path: reports/playwright-report/
+          retention-days: 14
+
+      - name: Upload Allure results (artifact)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: allure-results-critical
+          path: reports/allure-results/
+          retention-days: 14
+
+  # ─── Deploy: publica relatório do sanity no GitHub Pages ──────────────────
+  deploy-report:
+    name: "Deploy · GitHub Pages"
+    needs: critical
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     timeout-minutes: 5
@@ -112,8 +177,9 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v4
 
+  # ─── Nightly: suite completa de regressão ─────────────────────────────────
   regression:
-    name: Regression Tests (Nightly)
+    name: "Nightly · Regression Tests"
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
     timeout-minutes: 30
