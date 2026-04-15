@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: '0 2 * * *'
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   sanity:
     name: Sanity Tests
@@ -37,7 +42,7 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      - name: Upload Playwright report
+      - name: Upload Playwright report (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -52,6 +57,26 @@ jobs:
           name: allure-results-sanity
           path: reports/allure-results/
           retention-days: 7
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: reports/playwright-report/
+
+  deploy-report:
+    name: Deploy Report to GitHub Pages
+    needs: sanity
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
 
   regression:
     name: Regression Tests (Nightly)
