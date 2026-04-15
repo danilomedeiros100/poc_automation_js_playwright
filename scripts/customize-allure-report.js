@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * Pós-processamento do HTML do Allure (multiplataforma): título, custom.css,
- * logo em plugin/custom-logo, favicon e widgets/summary.json.
+ * logo do menu e ícone da aba via data URIs (evita falhas de path com allure open / Pages),
+ * widgets/summary.json.
  *
  * ALLURE_REPORT_DIR — pasta do relatório gerado (default: reports/allure-report)
- * ALLURE_CUSTOM_DIR — pasta com styles.css, neuro-logo.svg, favicon.ico (default: allure-custom)
+ * ALLURE_CUSTOM_DIR — pasta com styles.css, neuro-logo.svg, icone-logo.svg, favicon.ico (default: allure-custom)
  * ALLURE_REPORT_TITLE — título da aba e do sumário (default: Relatório QA)
  */
 const fs = require('fs');
@@ -23,6 +24,50 @@ function escapeXmlTitle(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/** data:image/...;base64,... a partir de ficheiro (buffer binário). */
+function toDataUrl(absPath, mime) {
+  const buf = fs.readFileSync(absPath);
+  return `data:${mime};base64,${buf.toString('base64')}`;
+}
+
+/** CSS url("data:...") para usar em background. */
+function svgFileToCssUrl(absPath) {
+  return `url("${toDataUrl(absPath, 'image/svg+xml')}")`;
+}
+
+/** Remove links de ícone existentes e injeta um único <link rel="icon"> após <head>. */
+function setTabIconLink(html, linkTag) {
+  let out = html.replace(/<link[^>]*rel=["']shortcut icon["'][^>]*>\s*/gi, '');
+  out = out.replace(/<link[^>]*rel=["']icon["'][^>]*>\s*/gi, '');
+  return out.replace(/<head[^>]*>/i, (m) => `${m}\n    ${linkTag}`);
+}
+
+/** Injeta <style> com logo em data URI logo a seguir ao link do custom.css (cascade por cima). */
+function injectInlineLogoStyle(html, cssUrlForBackground) {
+  const block = `
+<style type="text/css" id="allure-poc-inline-logo">
+.side-nav__brand {
+  background-image: ${cssUrlForBackground} !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: contain !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  overflow: visible !important;
+}
+</style>`;
+  const stripped = html.replace(
+    /<style[^>]*id=["']allure-poc-inline-logo["'][^>]*>[\s\S]*?<\/style>\s*/gi,
+    ''
+  );
+  const marker = /<link[^>]*href=["']custom\.css["'][^>]*>/i;
+  if (marker.test(stripped)) {
+    return stripped.replace(marker, (m) => `${m}\n${block}`);
+  }
+  return stripped.replace(/<\/head>/i, `${block}\n</head>`);
 }
 
 function main() {
@@ -53,23 +98,32 @@ function main() {
   }
 
   const logoSource = path.join(customDir, 'neuro-logo.svg');
+  const logoFallback = path.join(customDir, 'icone-logo.svg');
+  let menuLogoPath = null;
   if (fs.existsSync(logoSource)) {
-    const logoTargetDir = path.join(outputFolder, 'plugin', 'custom-logo');
-    fs.mkdirSync(logoTargetDir, { recursive: true });
-    fs.copyFileSync(logoSource, path.join(logoTargetDir, 'neuro-logo.svg'));
+    menuLogoPath = logoSource;
+  } else if (fs.existsSync(logoFallback)) {
+    menuLogoPath = logoFallback;
+  }
+  if (menuLogoPath) {
+    const cssBg = svgFileToCssUrl(menuLogoPath);
+    html = injectInlineLogoStyle(html, cssBg);
   }
 
+  const tabIconSvg = path.join(customDir, 'icone-logo.svg');
   const faviconSource = path.join(customDir, 'favicon.ico');
-  if (fs.existsSync(faviconSource)) {
-    fs.copyFileSync(faviconSource, path.join(outputFolder, 'favicon.ico'));
-    if (/<link[^>]*rel=["']icon["'][^>]*>/i.test(html)) {
-      html = html.replace(
-        /<link[^>]*rel=["']icon["'][^>]*>/gi,
-        '<link rel="icon" type="image/x-icon" href="favicon.ico">'
-      );
-    } else {
-      html = html.replace(/<head[^>]*>/i, (m) => `${m}\n    <link rel="icon" type="image/x-icon" href="favicon.ico">`);
-    }
+  if (fs.existsSync(tabIconSvg)) {
+    const href = toDataUrl(tabIconSvg, 'image/svg+xml');
+    html = setTabIconLink(
+      html,
+      `<link rel="icon" type="image/svg+xml" href="${href}">`
+    );
+  } else if (fs.existsSync(faviconSource)) {
+    const href = toDataUrl(faviconSource, 'image/x-icon');
+    html = setTabIconLink(
+      html,
+      `<link rel="icon" type="image/x-icon" href="${href}">`
+    );
   }
 
   fs.writeFileSync(indexPath, html, 'utf8');

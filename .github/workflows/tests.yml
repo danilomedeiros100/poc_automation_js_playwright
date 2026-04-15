@@ -131,6 +131,8 @@ jobs:
           else
             printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Allure</title></head><body><p>Relatório Allure indisponível nesta execução.</p></body></html>' > reports/pages/allure/index.html
           fi
+          mkdir -p reports/pages/assets
+          cp .github/pages-assets/company-logo.svg reports/pages/assets/company-logo.svg
           cp .github/pages-index.html reports/pages/index.html
 
       - name: Enviar artifact GitHub Pages
@@ -420,6 +422,8 @@ jobs:
           else
             printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Allure</title></head><body><p>Relatório Allure indisponível nesta execução.</p></body></html>' > reports/pages/allure/index.html
           fi
+          mkdir -p reports/pages/assets
+          cp .github/pages-assets/company-logo.svg reports/pages/assets/company-logo.svg
           cp .github/pages-index.html reports/pages/index.html
 
       - name: Enviar artifact GitHub Pages

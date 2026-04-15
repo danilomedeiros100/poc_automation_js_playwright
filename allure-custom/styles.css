@@ -1,14 +1,33 @@
-/* Tema customizado do relatório Allure (menu lateral, logo, favicon via index.html) */
+/* Tema customizado do relatório Allure (menu lateral, cores).
+   O logo do menu é injetado em index.html (data URI) por scripts/customize-allure-report.js
+   para funcionar com allure open, GitHub Pages e caminhos relativos imprevisíveis. */
 .side-nav__brand {
-  background-image: url('plugin/custom-logo/neuro-logo.svg');
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  height: 64px;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  min-height: 64px;
   width: 100%;
   display: block;
   text-indent: -9999px;
-  overflow: hidden;
+  /* visible para o contorno não ser cortado */
+  overflow: visible !important;
+  /*
+   * Contorno branco uniforme (sem blur): vários drop-shadow com raio 0
+   * em círculo a 1px e 2px — segue o alfa do SVG.
+   */
+  filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff)
+    drop-shadow(0 -1px 0 #fff) drop-shadow(1px 1px 0 #fff) drop-shadow(1px -1px 0 #fff)
+    drop-shadow(-1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff) drop-shadow(2px 0 0 #fff)
+    drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(2px 2px 0 #fff) drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
+    drop-shadow(-2px -2px 0 #fff) drop-shadow(2px 1px 0 #fff) drop-shadow(2px -1px 0 #fff)
+    drop-shadow(-2px 1px 0 #fff) drop-shadow(-2px -1px 0 #fff) drop-shadow(1px 2px 0 #fff)
+    drop-shadow(-1px 2px 0 #fff) drop-shadow(1px -2px 0 #fff) drop-shadow(-1px -2px 0 #fff) !important;
+}
+
+/* Texto "Allure" do tema fica por cima do background; esconder para o logo aparecer. */
+.side-nav__brand-text {
+  display: none !important;
 }
 
 .side-nav__brand-icon {
@@ -24,7 +43,13 @@
 }
 
 .side-nav__head {
-  border-bottom: 1px solid #ffffff !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  padding: 10px 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  overflow: visible !important;
 }
 
 .side-nav__collapse_active,
