@@ -1,0 +1,58 @@
+/* Cores Neurotech para o menu lateral do Allure */
+.side-nav__brand {
+  background-image: url('plugin/custom-logo/neuro-logo.svg');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  height: 64px;
+  width: 100%;
+  display: block;
+  text-indent: -9999px; /* oculta qualquer texto */
+  overflow: hidden;
+}
+
+.side-nav__brand-icon {
+  display: none !important;
+}
+
+.side-nav {
+  background: #001E44 !important;
+}
+
+.side-nav__link {
+  color: #ffffff !important;
+}
+
+.side-nav__head {
+  border-bottom: 1px solid #ffffff !important;
+}
+
+.side-nav__collapse_active, .side-nav__link_active {
+  background: #003366 !important;
+  border-right: 4px solid #0071ce !important;
+}
+
+.side-nav__collapse, .side-nav__link {
+  color: #ffffff !important;
+}
+
+.button_inverse {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+/* Oculta o ícone padrão da marca Allure que aparece à esquerda do nome */
+.side-nav__brand::before {
+  display: none !important;
+}
+/* Oculta o ícone padrão da marca Allure que aparece à esquerda do nome */
+.side-nav__brand::before {
+  display: none !important;
+}
+/* Oculta o ícone padrão da marca Allure que aparece à esquerda do nome */
+.side-nav__brand::before {
+  display: none !important;
+}
+/* Oculta o ícone padrão da marca Allure que aparece à esquerda do nome */
+.side-nav__brand::before {
+  display: none !important;
+}

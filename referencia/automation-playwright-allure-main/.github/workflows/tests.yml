@@ -1,0 +1,60 @@
+name: Run Tests and Publish Allure Report
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        python -m playwright install
+        npm install -g allure-commandline
+
+    - name: Run tests and collect Allure results
+      run: |
+        pytest --alluredir=allure-results
+
+    - name: Generate Allure Report
+      run: |
+        allure generate allure-results -o allure-report --clean --lang br
+
+    - name: Update title and summary
+      run: |
+        sed -i 's|<title>Allure Report</title>|<title>Neuro Report</title>|' allure-report/index.html
+        if [ -f allure-report/widgets/summary.json ]; then
+          sed -i 's/Allure Report/Neuro Report/g' allure-report/widgets/summary.json
+        fi
+
+    - name: Apply custom styles
+      run: |
+        cp allure-custom/styles.css allure-report/custom.css
+        sed -i '/styles.css/a <link rel="stylesheet" type="text/css" href="custom.css">' allure-report/index.html
+
+    - name: Copy logo and favicon
+      run: |
+        mkdir -p allure-report/plugin/custom-logo
+        cp allure-custom/neuro-logo.svg allure-report/plugin/custom-logo/neuro-logo.svg
+        cp allure-custom/favicon.ico allure-report/favicon.ico
+        if grep -q '<link rel="icon"' allure-report/index.html; then
+          sed -i 's|<link rel="icon[^>]*>|<link rel="icon" type="image/x-icon" href="favicon.ico">|' allure-report/index.html
+        else
+          sed -i '/<head>/a <link rel="icon" type="image/x-icon" href="favicon.ico">' allure-report/index.html
+        fi
+
+    - name: Deploy Allure Report to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: allure-report
+        publish_branch: gh-pages
