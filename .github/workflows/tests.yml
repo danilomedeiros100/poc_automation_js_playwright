@@ -42,8 +42,7 @@ permissions:
   id-token: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Relativo à raiz do checkout; preenchido após checkout do gh-pages nos jobs que geram Allure
+  # Relativo à raiz do checkout; preenchido após clone de gh-pages nos jobs que geram Allure
   ALLURE_HISTORY_SOURCE: gh-pages-prev/allure/history
 
 jobs:
@@ -56,10 +55,10 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -69,7 +68,7 @@ jobs:
 
       - name: Cache dos browsers Playwright
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('package-lock.json') }}
@@ -106,6 +105,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Instalar Java (Allure CLI)
+        if: always()
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
@@ -113,19 +119,28 @@ jobs:
       - name: Montar pasta combinada para GitHub Pages
         if: always()
         run: |
+          set -euo pipefail
           mkdir -p reports/pages/playwright reports/pages/allure
-          cp -r reports/playwright-report/. reports/pages/playwright/
-          cp -r reports/allure-report/. reports/pages/allure/
+          if [ -d reports/playwright-report ] && [ -f reports/playwright-report/index.html ]; then
+            cp -r reports/playwright-report/. reports/pages/playwright/
+          else
+            printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Playwright</title></head><body><p>Relatório Playwright indisponível nesta execução.</p></body></html>' > reports/pages/playwright/index.html
+          fi
+          if [ -d reports/allure-report ] && [ -f reports/allure-report/index.html ]; then
+            cp -r reports/allure-report/. reports/pages/allure/
+          else
+            printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Allure</title></head><body><p>Relatório Allure indisponível nesta execução.</p></body></html>' > reports/pages/allure/index.html
+          fi
           cp .github/pages-index.html reports/pages/index.html
 
       - name: Enviar artifact GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         if: always()
         with:
           path: reports/pages/
 
       - name: Artifact — relatório Playwright
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report-sanity
@@ -133,7 +148,7 @@ jobs:
           retention-days: 7
 
       - name: Artifact — resultados Allure (raw)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: allure-results-sanity
@@ -150,10 +165,10 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -163,7 +178,7 @@ jobs:
 
       - name: Cache dos browsers Playwright
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('package-lock.json') }}
@@ -190,12 +205,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Instalar Java (Allure CLI)
+        if: always()
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
 
       - name: Artifact — relatório Playwright
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report-critical
@@ -203,7 +225,7 @@ jobs:
           retention-days: 14
 
       - name: Artifact — resultados Allure (raw)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: allure-results-critical
@@ -219,10 +241,10 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -232,7 +254,7 @@ jobs:
 
       - name: Cache dos browsers Playwright
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ hashFiles('package-lock.json') }}
@@ -270,13 +292,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Instalar Java (Allure CLI)
+        if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Gerar relatório Allure
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
         run: npm run report:allure:generate
 
       - name: Artifact — relatório Playwright
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-manual-${{ github.event.inputs.tipo_suite }}
           path: reports/playwright-report/
@@ -284,7 +313,7 @@ jobs:
 
       - name: Artifact — relatório Allure (HTML)
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: allure-report-manual-${{ github.event.inputs.tipo_suite }}
           path: reports/allure-report/
@@ -292,7 +321,7 @@ jobs:
 
       - name: Artifact — resultados Allure (raw)
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: allure-results-manual-${{ github.event.inputs.tipo_suite }}
           path: reports/allure-results/
@@ -313,7 +342,7 @@ jobs:
     steps:
       - name: Deploy para GitHub Pages
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   # ─── Regressão agendada + Pages (desativado até existir `on.schedule` acima) ─
   regression:
@@ -324,10 +353,10 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'npm'
@@ -337,7 +366,7 @@ jobs:
 
       - name: Cache dos browsers Playwright
         id: playwright-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-all-${{ hashFiles('package-lock.json') }}
@@ -365,6 +394,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      - name: Instalar Java (Allure CLI)
+        if: always()
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Gerar relatório Allure
         if: always()
         run: npm run report:allure:generate
@@ -372,19 +408,28 @@ jobs:
       - name: Montar pasta combinada para GitHub Pages
         if: always()
         run: |
+          set -euo pipefail
           mkdir -p reports/pages/playwright reports/pages/allure
-          cp -r reports/playwright-report/. reports/pages/playwright/
-          cp -r reports/allure-report/. reports/pages/allure/
+          if [ -d reports/playwright-report ] && [ -f reports/playwright-report/index.html ]; then
+            cp -r reports/playwright-report/. reports/pages/playwright/
+          else
+            printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Playwright</title></head><body><p>Relatório Playwright indisponível nesta execução.</p></body></html>' > reports/pages/playwright/index.html
+          fi
+          if [ -d reports/allure-report ] && [ -f reports/allure-report/index.html ]; then
+            cp -r reports/allure-report/. reports/pages/allure/
+          else
+            printf '%s\n' '<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>Allure</title></head><body><p>Relatório Allure indisponível nesta execução.</p></body></html>' > reports/pages/allure/index.html
+          fi
           cp .github/pages-index.html reports/pages/index.html
 
       - name: Enviar artifact GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         if: always()
         with:
           path: reports/pages/
 
       - name: Artifact — relatório Playwright
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-report-regression
@@ -392,7 +437,7 @@ jobs:
           retention-days: 30
 
       - name: Artifact — relatório Allure (HTML)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: allure-report-regression
