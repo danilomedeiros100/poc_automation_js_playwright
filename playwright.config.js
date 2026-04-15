@@ -9,7 +9,38 @@ module.exports = defineConfig({
   workers: process.env.CI ? 2 : undefined,
   reporter: [
     ['html', { outputFolder: 'reports/playwright-report', open: 'never' }],
-    ['allure-playwright', { resultsDir: 'reports/allure-results' }],
+    ['allure-playwright', {
+      resultsDir: 'reports/allure-results',
+      detail: true,
+      suiteTitle: false,
+      environmentInfo: {
+        Ambiente: process.env.CI ? 'CI / GitHub Actions' : 'Local',
+        'UI URL': process.env.BASE_URL || 'https://www.saucedemo.com',
+        'API URL': process.env.API_URL || 'https://jsonplaceholder.typicode.com',
+        Node: process.version,
+        Playwright: require('@playwright/test/package.json').version,
+      },
+      categories: [
+        {
+          name: 'Falha Intencional (esperada)',
+          matchedStatuses: ['failed'],
+          messageRegex: '.*TITULO ERRADO.*',
+        },
+        {
+          name: 'Falha de Assertion',
+          matchedStatuses: ['failed'],
+          messageRegex: '.*expect.*failed.*',
+        },
+        {
+          name: 'Erro de Execução',
+          matchedStatuses: ['broken'],
+        },
+        {
+          name: 'Testes Ignorados',
+          matchedStatuses: ['skipped'],
+        },
+      ],
+    }],
   ],
   use: {
     baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
