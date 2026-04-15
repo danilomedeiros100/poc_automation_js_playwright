@@ -9,12 +9,12 @@ test.describe('Login UI @ui', () => {
   });
 
   test('deve exibir erro com credenciais inválidas @regression', async ({ loginPage }) => {
-    await loginPage.login(users.invalidUser.username, users.invalidUser.password);
+    await loginPage.loginExpectingError(users.invalidUser.username, users.invalidUser.password);
     await expect(loginPage.errorMessage).toBeVisible();
   });
 
   test('deve bloquear usuário locked_out @regression', async ({ loginPage }) => {
-    await loginPage.login(users.lockedUser.username, users.lockedUser.password);
+    await loginPage.loginExpectingError(users.lockedUser.username, users.lockedUser.password);
     await expect(loginPage.errorMessage).toBeVisible();
     await expect(loginPage.errorMessage).toContainText('locked out');
   });

@@ -8,7 +8,7 @@ class InventoryPage extends BasePage {
     this.cartBadge = page.locator('.shopping_cart_badge');
     this.cartLink = page.locator('.shopping_cart_link');
     this.pageTitle = page.locator('.title');
-    this.sortDropdown = page.locator('[data-test="product_sort_container"]');
+    this.sortDropdown = page.locator('[data-test="product-sort-container"]');
     this.burgerMenu = page.locator('#react-burger-menu-btn');
     this.logoutLink = page.locator('#logout_sidebar_link');
   }
