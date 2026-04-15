@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { defineConfig, devices } = require('@playwright/test');
 const { defineBddConfig } = require('playwright-bdd');
+const { allureMetadataFromBddTagsListener } = require('./src/utils/allureFromPlaywrightTagsListener');
 
 module.exports = defineConfig({
   fullyParallel: false,
@@ -13,6 +14,7 @@ module.exports = defineConfig({
       resultsDir: 'reports/allure-results',
       detail: true,
       suiteTitle: false,
+      listeners: [allureMetadataFromBddTagsListener()],
       environmentInfo: {
         Ambiente: process.env.CI ? 'CI / GitHub Actions' : 'Local',
         'UI URL': process.env.BASE_URL || 'https://www.saucedemo.com',
@@ -20,26 +22,8 @@ module.exports = defineConfig({
         Node: process.version,
         Playwright: require('@playwright/test/package.json').version,
       },
-      categories: [
-        {
-          name: 'Falha Intencional (esperada)',
-          matchedStatuses: ['failed'],
-          messageRegex: '.*TITULO ERRADO.*',
-        },
-        {
-          name: 'Falha de Assertion',
-          matchedStatuses: ['failed'],
-          messageRegex: '.*expect.*failed.*',
-        },
-        {
-          name: 'Erro de Execução',
-          matchedStatuses: ['broken'],
-        },
-        {
-          name: 'Testes Ignorados',
-          matchedStatuses: ['skipped'],
-        },
-      ],
+      // Categorias: não definir aqui — o Allure aplica as padrão automaticamente.
+      // Opcional: ver scripts/prepare-allure-categories.js + config/allure-categories.json
     }],
   ],
   use: {
@@ -51,7 +35,8 @@ module.exports = defineConfig({
   outputDir: 'reports/test-results',
   projects: [
     {
-      name: 'chromium',
+      // Nome só para o runner; no Allure o parentSuite vem das tags @allure.label.parentSuite
+      name: 'chrome-desktop',
       use: { ...devices['Desktop Chrome'] },
       testDir: defineBddConfig({
         features: 'features/**/*.feature',

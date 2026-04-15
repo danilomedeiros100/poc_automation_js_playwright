@@ -12,7 +12,7 @@
     "test:critical": "bddgen && playwright test --grep @critical",
     "test:regression": "bddgen && playwright test --grep @regression",
     "report:playwright": "playwright show-report reports/playwright-report",
-    "report:allure:generate": "allure generate reports/allure-results -o reports/allure-report --clean",
+    "report:allure:generate": "node scripts/prepare-allure-categories.js && allure generate reports/allure-results -o reports/allure-report --clean",
     "report:allure:open": "allure open reports/allure-report",
     "report:allure": "npm run report:allure:generate && npm run report:allure:open",
     "lint": "eslint step-definitions/"
