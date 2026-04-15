@@ -5,7 +5,7 @@
  * widgets/summary.json.
  *
  * ALLURE_REPORT_DIR — pasta do relatório gerado (default: reports/allure-report)
- * ALLURE_CUSTOM_DIR — pasta com styles.css, neuro-logo.svg, icone-logo.svg, favicon.ico (default: allure-custom)
+ * ALLURE_CUSTOM_DIR — styles.css, logo (menu): logo.png | neuro-logo.svg | icone-logo.svg; aba: icone-logo.svg ou favicon.ico
  * ALLURE_REPORT_TITLE — título da aba e do sumário (default: Relatório QA)
  */
 const fs = require('fs');
@@ -14,7 +14,7 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const outputFolder = process.env.ALLURE_REPORT_DIR || path.join(root, 'reports', 'allure-report');
 const customDir = process.env.ALLURE_CUSTOM_DIR || path.join(root, 'allure-custom');
-const reportTitle = process.env.ALLURE_REPORT_TITLE || 'Relatório QA';
+const reportTitle = process.env.ALLURE_REPORT_TITLE || 'Quality Report';
 
 const indexPath = path.join(outputFolder, 'index.html');
 
@@ -32,9 +32,25 @@ function toDataUrl(absPath, mime) {
   return `data:${mime};base64,${buf.toString('base64')}`;
 }
 
-/** CSS url("data:...") para usar em background. */
-function svgFileToCssUrl(absPath) {
-  return `url("${toDataUrl(absPath, 'image/svg+xml')}")`;
+const IMAGE_MIME = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+};
+
+/** CSS url("data:...") com MIME conforme a extensão do ficheiro. */
+function imageFileToCssUrl(absPath) {
+  const ext = path.extname(absPath).toLowerCase();
+  const mime = IMAGE_MIME[ext];
+  if (!mime) {
+    console.warn('[customize-allure-report] Extensão não suportada para logo de menu:', ext, '— use .png ou .svg');
+    return `url("${toDataUrl(absPath, 'image/png')}")`;
+  }
+  return `url("${toDataUrl(absPath, mime)}")`;
 }
 
 /** Remove links de ícone existentes e injeta um único <link rel="icon"> após <head>. */
@@ -97,29 +113,31 @@ function main() {
     }
   }
 
-  const logoSource = path.join(customDir, 'neuro-logo.svg');
-  const logoFallback = path.join(customDir, 'icone-logo.svg');
-  let menuLogoPath = null;
-  if (fs.existsSync(logoSource)) {
-    menuLogoPath = logoSource;
-  } else if (fs.existsSync(logoFallback)) {
-    menuLogoPath = logoFallback;
-  }
+  const menuCandidates = [
+    path.join(customDir, 'logo.png'),
+    path.join(customDir, 'neuro-logo.svg'),
+    path.join(customDir, 'icone-logo.svg'),
+  ];
+  const menuLogoPath = menuCandidates.find((p) => fs.existsSync(p));
   if (menuLogoPath) {
-    const cssBg = svgFileToCssUrl(menuLogoPath);
+    const cssBg = imageFileToCssUrl(menuLogoPath);
     html = injectInlineLogoStyle(html, cssBg);
   }
 
   const tabIconSvg = path.join(customDir, 'icone-logo.svg');
-  const faviconSource = path.join(customDir, 'favicon.ico');
+  const tabIconPng = path.join(customDir, 'logo.png');
+  const faviconIco = path.join(customDir, 'favicon.ico');
   if (fs.existsSync(tabIconSvg)) {
     const href = toDataUrl(tabIconSvg, 'image/svg+xml');
     html = setTabIconLink(
       html,
       `<link rel="icon" type="image/svg+xml" href="${href}">`
     );
-  } else if (fs.existsSync(faviconSource)) {
-    const href = toDataUrl(faviconSource, 'image/x-icon');
+  } else if (fs.existsSync(tabIconPng)) {
+    const href = toDataUrl(tabIconPng, 'image/png');
+    html = setTabIconLink(html, `<link rel="icon" type="image/png" href="${href}">`);
+  } else if (fs.existsSync(faviconIco)) {
+    const href = toDataUrl(faviconIco, 'image/x-icon');
     html = setTabIconLink(
       html,
       `<link rel="icon" type="image/x-icon" href="${href}">`

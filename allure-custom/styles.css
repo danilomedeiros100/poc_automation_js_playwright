@@ -9,20 +9,14 @@
   width: 100%;
   display: block;
   text-indent: -9999px;
-  /* visible para o contorno não ser cortado */
-  overflow: visible !important;
   /*
-   * Contorno branco uniforme (sem blur): vários drop-shadow com raio 0
-   * em círculo a 1px e 2px — segue o alfa do SVG.
+   * Evitar muitos filter: drop-shadow() encadeados — o relatório Allure é uma SPA
+   * que repinta muito; dezenas de sombras deixam o browser lento ou a travar.
+   * Contorno leve só no retângulo da área (custo baixo).
    */
-  filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff)
-    drop-shadow(0 -1px 0 #fff) drop-shadow(1px 1px 0 #fff) drop-shadow(1px -1px 0 #fff)
-    drop-shadow(-1px 1px 0 #fff) drop-shadow(-1px -1px 0 #fff) drop-shadow(2px 0 0 #fff)
-    drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
-    drop-shadow(2px 2px 0 #fff) drop-shadow(2px -2px 0 #fff) drop-shadow(-2px 2px 0 #fff)
-    drop-shadow(-2px -2px 0 #fff) drop-shadow(2px 1px 0 #fff) drop-shadow(2px -1px 0 #fff)
-    drop-shadow(-2px 1px 0 #fff) drop-shadow(-2px -1px 0 #fff) drop-shadow(1px 2px 0 #fff)
-    drop-shadow(-1px 2px 0 #fff) drop-shadow(1px -2px 0 #fff) drop-shadow(-1px -2px 0 #fff) !important;
+  overflow: visible !important;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 /* Texto "Allure" do tema fica por cima do background; esconder para o logo aparecer. */
