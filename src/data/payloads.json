@@ -1,0 +1,11 @@
+{
+  "login": {
+    "valid": {
+      "email": "eve.holt@reqres.in",
+      "password": "cityslicka"
+    },
+    "invalid": {
+      "email": "peter@klaven.com"
+    }
+  }
+}
