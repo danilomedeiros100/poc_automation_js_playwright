@@ -61,7 +61,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Instalar dependências (npm ci)
@@ -100,13 +100,11 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      - name: Checkout GitHub Pages (histórico Allure anterior)
+      - name: Histórico Allure (clone opcional de gh-pages)
         if: always()
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-prev
+        run: bash scripts/ci-clone-gh-pages.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Gerar relatório Allure
         if: always()
@@ -157,7 +155,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Instalar dependências (npm ci)
@@ -186,13 +184,11 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      - name: Checkout GitHub Pages (histórico Allure anterior)
+      - name: Histórico Allure (clone opcional de gh-pages)
         if: always()
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-prev
+        run: bash scripts/ci-clone-gh-pages.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Gerar relatório Allure
         if: always()
@@ -228,7 +224,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Instalar dependências (npm ci)
@@ -268,13 +264,11 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      - name: Checkout GitHub Pages (histórico Allure anterior)
+      - name: Histórico Allure (clone opcional de gh-pages)
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-prev
+        run: bash scripts/ci-clone-gh-pages.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Gerar relatório Allure
         if: ${{ always() && github.event.inputs.com_relatorios == 'true' }}
@@ -335,7 +329,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Instalar dependências (npm ci)
@@ -365,13 +359,11 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
-      - name: Checkout GitHub Pages (histórico Allure anterior)
+      - name: Histórico Allure (clone opcional de gh-pages)
         if: always()
-        continue-on-error: true
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: gh-pages-prev
+        run: bash scripts/ci-clone-gh-pages.sh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Gerar relatório Allure
         if: always()
