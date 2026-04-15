@@ -8,16 +8,25 @@ on:
   schedule:
     - cron: '0 2 * * *'
 
+# Cancela runs anteriores do mesmo branch/PR ao receber novo push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   sanity:
     name: Sanity Tests
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || github.event_name == 'push'
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +63,24 @@ jobs:
           UI_USER: ${{ secrets.UI_USER }}
           UI_PASS: ${{ secrets.UI_PASS }}
 
+      - name: Generate Allure Report
+        if: always()
+        run: npm run report:allure:generate
+
+      - name: Build combined Pages folder
+        if: always()
+        run: |
+          mkdir -p reports/pages/playwright reports/pages/allure
+          cp -r reports/playwright-report/. reports/pages/playwright/
+          cp -r reports/allure-report/. reports/pages/allure/
+          cp .github/pages-index.html reports/pages/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        if: always()
+        with:
+          path: reports/pages/
+
       - name: Upload Playwright report (artifact)
         uses: actions/upload-artifact@v4
         if: always()
@@ -62,7 +89,7 @@ jobs:
           path: reports/playwright-report/
           retention-days: 7
 
-      - name: Upload Allure results
+      - name: Upload Allure results (artifact)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,17 +97,12 @@ jobs:
           path: reports/allure-results/
           retention-days: 7
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        if: always()
-        with:
-          path: reports/playwright-report/
-
   deploy-report:
-    name: Deploy Report to GitHub Pages
+    name: Deploy Reports to GitHub Pages
     needs: sanity
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 5
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -94,6 +116,7 @@ jobs:
     name: Regression Tests (Nightly)
     runs-on: ubuntu-latest
     if: github.event_name == 'schedule'
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
