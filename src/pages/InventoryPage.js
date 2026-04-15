@@ -25,6 +25,10 @@ class InventoryPage extends BasePage {
     return this.cartBadge.textContent();
   }
 
+  async getSelectedSortOption() {
+    return this.sortDropdown.locator('option:checked').innerText();
+  }
+
   async logout() {
     await this.burgerMenu.click();
     await this.logoutLink.click();

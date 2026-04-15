@@ -1,8 +1,8 @@
 require('dotenv').config();
 const { defineConfig, devices } = require('@playwright/test');
+const { defineBddConfig } = require('playwright-bdd');
 
 module.exports = defineConfig({
-  testDir: './tests',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -22,6 +22,11 @@ module.exports = defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testDir: defineBddConfig({
+        features: 'features/**/*.feature',
+        steps: ['step-definitions/**/*.js'],
+        outputDir: '.features-gen',
+      }),
     },
   ],
 });

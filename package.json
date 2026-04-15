@@ -1,20 +1,21 @@
 {
   "name": "poc-automation-js-playwright",
   "version": "1.0.0",
-  "description": "POC de automação QA com Playwright - UI + API",
+  "description": "POC de automação QA com Playwright BDD - UI + API",
   "scripts": {
     "setup": "npm ci && npx playwright install --with-deps chromium",
-    "test": "playwright test",
-    "test:ui": "playwright test tests/ui",
-    "test:api": "playwright test tests/api",
-    "test:sanity": "playwright test --grep @sanity",
-    "test:critical": "playwright test --grep @critical",
-    "test:regression": "playwright test --grep @regression",
+    "bddgen": "bddgen",
+    "test": "bddgen && playwright test",
+    "test:ui": "bddgen && playwright test --grep @ui",
+    "test:api": "bddgen && playwright test --grep @api",
+    "test:sanity": "bddgen && playwright test --grep @sanity",
+    "test:critical": "bddgen && playwright test --grep @critical",
+    "test:regression": "bddgen && playwright test --grep @regression",
     "report:playwright": "playwright show-report reports/playwright-report",
     "report:allure:generate": "allure generate reports/allure-results -o reports/allure-report --clean",
     "report:allure:open": "allure open reports/allure-report",
     "report:allure": "npm run report:allure:generate && npm run report:allure:open",
-    "lint": "eslint tests/"
+    "lint": "eslint step-definitions/"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
@@ -22,6 +23,7 @@
     "allure-playwright": "^3.0.0",
     "dotenv": "^16.4.5",
     "eslint": "^9.0.0",
-    "eslint-plugin-playwright": "^1.6.0"
+    "eslint-plugin-playwright": "^1.6.0",
+    "playwright-bdd": "^8.5.0"
   }
 }
